@@ -1,0 +1,70 @@
+--Connecting 128x64 OLED disp to ESP8266-12E nodemcu DevKit from banggood
+-- modified by electromania 
+-- original code from 
+--https://github.com/nodemcu/nodemcu-firmware/tree/master/lua_examples/u8glib 
+-- setup SPI and connect display
+
+     -- D3 of ESP to RES of Display
+     -- D4 of ESP to DC of Display
+     -- D5 of ESP to SCL of Display  Hardware SPI CLK  = GPIO14 
+     -- D7 of ESP to SDA of Display  Hardware SPI MOSI = GPIO13
+     -- Hardware SPI MISO = GPIO12 (not used)
+
+     -- CS, D/C, and RES can be assigned freely to available GPIOs
+
+     function init_spi_display()
+
+     local cs  = 8 -- GPIO15, pull-down 10k to GND     worked even without 10k pulldown resistor
+     local dc  = 4 -- GPIO2        -- D4-DC
+     local res = 3 -- GPIO16       -- D3-RES
+
+     spi.setup(1, spi.MASTER, spi.CPOL_LOW, spi.CPHA_LOW, spi.DATABITS_8, 0)
+     disp = u8g.ssd1306_128x64_spi(cs, dc, res)
+end
+
+
+-- graphic test components
+function prepare()
+     --disp:setFont(u8g.font_6x10)
+     disp:setFont(u8g.font_chikita)
+     disp:setFontRefHeightExtendedText()
+     disp:setDefaultForegroundColor()
+     disp:setFontPosTop()
+end
+
+
+function extra_page(a)
+     disp:setFont(u8g.font_chikita)
+     disp:setScale2x2()
+     disp:drawStr(5, 12+a, "Electromania")
+     disp:undoScale()
+end
+
+
+-- the draw() routine
+function draw(draw_state)
+     prepare()
+     extra_page(bit.band(draw_state, 1))
+end
+
+function graphics_test(delay)
+     print("--- Starting Graphics Test ---")
+
+     -- cycle through all components
+     local draw_state
+     for draw_state = 0, 150, 1 do   -- this was just to give a little vibrating animation effect 
+          disp:firstPage()
+          repeat
+               draw(draw_state)
+          until disp:nextPage() == false
+    
+          tmr.delay(delay)
+          -- re-trigger Watchdog!
+          tmr.wdclr()
+     end
+
+     print("--- Graphics Test done ---")
+end
+
+init_spi_display()
+graphics_test(50000)
